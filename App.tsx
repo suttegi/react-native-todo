@@ -1,20 +1,269 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState, useContext, useMemo } from 'react';
+import {
+  KeyboardAvoidingView,
+  Text,
+  View,
+  TextInput,
+  TouchableOpacity,
+  Keyboard,
+  ScrollView,
+  Platform,
+  Switch,
+  Modal,
+} from 'react-native';
+import { ThemeProvider, ThemeContext } from './context/ThemeContext';
+import Task from './components/Task';
+import TaskDetail from './components/TaskDetail';
+import { getStyles } from './styles/AppStyle';
+import { format } from 'date-fns';
+import { SortAsc, SortDesc } from 'lucide-react-native';
 
-export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
+export type TaskStatus = 'In Progress' | 'Completed' | 'Cancelled';
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  location?: string;
+  createdAt: string;
+  status: TaskStatus;
+  lastUpdated?: string;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+type SortOption = 'date' | 'status';
+type SortDirection = 'asc' | 'desc';
+
+const AppContent: React.FC = () => {
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
+  const styles = getStyles(isDarkMode);
+  const [taskTitle, setTaskTitle] = useState<string>('');
+  const [taskDescription, setTaskDescription] = useState<string>('');
+  const [taskLocation, setTaskLocation] = useState<string>('');
+  const [taskItems, setTaskItems] = useState<TaskItem[]>([]);
+  const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'All'>('All');
+
+  const handleAddTask = (): void => {
+    if (taskTitle) {
+      const newTask: TaskItem = {
+        id: Date.now().toString(),
+        title: taskTitle,
+        description: taskDescription,
+        location: taskLocation,
+        createdAt: format(new Date(), 'PPP pp'),
+        status: 'In Progress',
+      };
+
+      Keyboard.dismiss();
+      setTaskItems([...taskItems, newTask]);
+      setTaskTitle('');
+      setTaskDescription('');
+      setTaskLocation('');
+    }
+  };
+
+  const updateTaskStatus = (id: string, newStatus: TaskStatus): void => {
+    setTaskItems(taskItems.map(task => {
+      if (task.id === id) {
+        return {
+          ...task,
+          status: newStatus,
+          lastUpdated: format(new Date(), 'PPP pp'),
+        };
+      }
+      return task;
+    }));
+  };
+
+  const deleteTask = (id: string): void => {
+    setTaskItems(taskItems.filter(task => task.id !== id));
+    setSelectedTask(null);
+  };
+
+  const toggleSort = () => {
+    setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  const sortedAndFilteredTasks = useMemo(() => {
+    let filtered = taskItems;
+    
+    // status of task
+    if (statusFilter !== 'All') {
+      filtered = filtered.filter(task => task.status === statusFilter);
+    }
+
+    // filter tasks
+    return filtered.sort((a, b) => {
+      if (sortBy === 'date') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+      } else {
+        return sortDirection === 'asc' 
+          ? a.status.localeCompare(b.status)
+          : b.status.localeCompare(a.status);
+      }
+    });
+  }, [taskItems, sortBy, sortDirection, statusFilter]);
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.sectionTitle}>#TODO list</Text>
+            <Text style={styles.taskCount}>
+              {sortedAndFilteredTasks.length} tasks
+            </Text>
+          </View>
+          <View style={styles.themeSwitch}>
+            <Text style={styles.themeSwitchText}>🌙</Text>
+            <Switch
+              value={isDarkMode}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={isDarkMode ? '#f5dd4b' : '#f4f3f4'}
+            />
+            <Text style={styles.themeSwitchText}>☀️</Text>
+          </View>
+        </View>
+
+        <View style={styles.filterContainer}>
+          <View style={styles.filterButtons}>
+            <TouchableOpacity
+              style={[styles.filterButton, statusFilter === 'All' && styles.activeFilter]}
+              onPress={() => setStatusFilter('All')}
+            >
+              <Text style={styles.filterText}>All</Text>
+            </TouchableOpacity>
+            {(['In Progress', 'Completed', 'Cancelled'] as TaskStatus[]).map((status) => (
+              <TouchableOpacity
+                key={status}
+                style={[styles.filterButton, statusFilter === status && styles.activeFilter]}
+                onPress={() => setStatusFilter(status)}
+              >
+                <Text style={styles.filterText}>{status}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <View style={styles.sortContainer}>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => setSortBy('date')}
+            >
+              <Text style={[styles.sortText, sortBy === 'date' && styles.activeSortText]}>Date</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => setSortBy('status')}
+            >
+              <Text style={[styles.sortText, sortBy === 'status' && styles.activeSortText]}>Status</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleSort}>
+              {sortDirection === 'asc' ? (
+                <SortAsc size={24} color={isDarkMode ? '#fff' : '#000'} />
+              ) : (
+                <SortDesc size={24} color={isDarkMode ? '#fff' : '#000'} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.tasksWrapper}>
+          {sortedAndFilteredTasks.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>empty</Text>
+              <Text style={styles.emptyStateSubtext}>
+                {statusFilter !== 'All' 
+                  ? `No ${statusFilter.toLowerCase()} tasks`
+                  : 'add a task'}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.items}>
+              {sortedAndFilteredTasks.map((item) => (
+                <Task
+                  key={item.id}
+                  task={item}
+                  onPress={() => setSelectedTask(item)}
+                  onStatusChange={(status) => updateTaskStatus(item.id, status)}
+                  onDelete={() => deleteTask(item.id)}
+                  isDarkMode={isDarkMode}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.writeTaskWrapper}
+      >
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, styles.titleInput]}
+            placeholder="Task title"
+            placeholderTextColor={isDarkMode ? '#888' : '#666'}
+            value={taskTitle}
+            onChangeText={setTaskTitle}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Description"
+            placeholderTextColor={isDarkMode ? '#888' : '#666'}
+            value={taskDescription}
+            onChangeText={setTaskDescription}
+            multiline
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Location (optional)"
+            placeholderTextColor={isDarkMode ? '#888' : '#666'}
+            value={taskLocation}
+            onChangeText={setTaskLocation}
+          />
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleAddTask}
+          >
+            <Text style={styles.addButtonText}>Add Task</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+
+      <Modal
+        visible={!!selectedTask}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSelectedTask(null)}
+      >
+        {selectedTask && (
+          <TaskDetail
+            task={selectedTask}
+            onClose={() => setSelectedTask(null)}
+            onDelete={() => deleteTask(selectedTask.id)}
+            onStatusChange={(status) => updateTaskStatus(selectedTask.id, status)}
+            isDarkMode={isDarkMode}
+          />
+        )}
+      </Modal>
+    </View>
+  );
+};
+
+
+
+const App: React.FC = () => (
+  <ThemeProvider>
+    <AppContent />
+  </ThemeProvider>
+);
+
+export default App;
