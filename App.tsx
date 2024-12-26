@@ -1,4 +1,4 @@
-import React, { useState, useContext, useMemo } from 'react';
+import React, { useState, useContext, useMemo, useEffect } from 'react';
 import {
   KeyboardAvoidingView,
   Text,
@@ -17,6 +17,32 @@ import TaskDetail from './components/TaskDetail';
 import { getStyles } from './styles/AppStyle';
 import { format } from 'date-fns';
 import { SortAsc, SortDesc } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+
+const TASKS_KEY = '@tasks';
+const MAX_TITLE_LENGTH = 50;
+const MAX_DESCRIPTION_LENGTH = 500;
+const MAX_LOCATION_LENGTH = 30;
+
+
+const saveTasksToStorage = async (tasks: TaskItem[]) => {
+  try {
+    await AsyncStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  } catch (error) {
+    console.error('Failed to save tasks:', error);
+  }
+};
+
+const loadTasksFromStorage = async (): Promise<TaskItem[]> => {
+  try {
+    const storedTasks = await AsyncStorage.getItem(TASKS_KEY);
+    return storedTasks ? JSON.parse(storedTasks) : [];
+  } catch (error) {
+    console.error('Failed to load tasks:', error);
+    return [];
+  }
+};
 
 export type TaskStatus = 'In Progress' | 'Completed' | 'Cancelled';
 
@@ -44,24 +70,57 @@ const AppContent: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'All'>('All');
+  
+
+  // load tasks on app start
+  useEffect(() => {
+    (async () => {
+      const loadedTasks = await loadTasksFromStorage();
+      setTaskItems(loadedTasks);
+    })();
+  }, []);
+
+  // save tasks whenever they change
+  useEffect(() => {
+    saveTasksToStorage(taskItems);
+  }, [taskItems]);
+  
 
   const handleAddTask = (): void => {
-    if (taskTitle) {
-      const newTask: TaskItem = {
-        id: Date.now().toString(),
-        title: taskTitle,
-        description: taskDescription,
-        location: taskLocation,
-        createdAt: format(new Date(), 'PPP pp'),
-        status: 'In Progress',
-      };
 
-      Keyboard.dismiss();
-      setTaskItems([...taskItems, newTask]);
-      setTaskTitle('');
-      setTaskDescription('');
-      setTaskLocation('');
+    // validate input
+    if (!taskTitle.trim()) {
+      alert('Task title is required!');
+      return;
     }
+  
+    if (taskTitle.length > MAX_TITLE_LENGTH) {
+      alert('Task title cannot exceed 50 characters!');
+      return;
+    }
+  
+    if (taskDescription.length > MAX_DESCRIPTION_LENGTH) {
+      alert('Task description cannot exceed 200 characters!');
+      return;
+    }
+
+    if (taskLocation.length > MAX_LOCATION_LENGTH) {
+      alert('Location cannot exceed 30 characters');
+    }
+  
+    const newTask: TaskItem = {
+      id: Date.now().toString(),
+      title: taskTitle.trim(),
+      description: taskDescription.trim(),
+      location: taskLocation.trim() || undefined,
+      createdAt: format(new Date(), 'PPP pp'),
+      status: 'In Progress',
+    };
+  
+    setTaskItems([...taskItems, newTask]);
+    setTaskTitle('');
+    setTaskDescription('');
+    setTaskLocation('');
   };
 
   const updateTaskStatus = (id: string, newStatus: TaskStatus): void => {
