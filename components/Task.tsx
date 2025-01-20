@@ -2,15 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { getTaskStyles } from '../styles/TaskStyle';
 import { Trash2, MoreVertical } from 'lucide-react-native';
-import { TaskItem, TaskStatus } from '../App';
-
-interface TaskProps {
-  task: TaskItem;
-  onPress: () => void;
-  onStatusChange: (status: TaskStatus) => void;
-  onDelete: () => void;
-  isDarkMode: boolean;
-}
+import { TaskProps, TaskItem, TaskStatus } from '../types';
 
 const getStatusColor = (status: TaskStatus, isDarkMode: boolean) => {
   switch (status) {

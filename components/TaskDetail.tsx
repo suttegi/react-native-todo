@@ -1,16 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Linking } from 'react-native';
 import { getTaskDetailStyles } from '../styles/TaskStyle';
 import { X, Trash2, Clock, MapPin } from 'lucide-react-native';
-import { TaskItem, TaskStatus } from '../App';
-
-interface TaskDetailProps {
-  task: TaskItem;
-  onClose: () => void;
-  onDelete: () => void;
-  onStatusChange: (status: TaskStatus) => void;
-  isDarkMode: boolean;
-}
+import MapView, { Marker, Region } from 'react-native-maps';
+import { TaskDetailProps, TaskItem, TaskStatus } from '../types';
 
 const TaskDetail: React.FC<TaskDetailProps> = ({
   task,
@@ -20,6 +13,15 @@ const TaskDetail: React.FC<TaskDetailProps> = ({
   isDarkMode,
 }) => {
   const styles = getTaskDetailStyles(isDarkMode);
+
+  const mapRegion: Region | undefined = task.coordinates
+    ? {
+        latitude: task.coordinates.latitude,
+        longitude: task.coordinates.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }
+    : undefined;
 
   return (
     <View style={styles.container}>
@@ -55,6 +57,25 @@ const TaskDetail: React.FC<TaskDetailProps> = ({
             </View>
           )}
 
+          {task.coordinates && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Task Location on Map</Text>
+              <MapView
+                style={styles.map}
+                initialRegion={mapRegion}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: task.coordinates.latitude,
+                    longitude: task.coordinates.longitude,
+                  }}
+                  title={task.title}
+                  description={task.location || "Task Location"}
+                />
+              </MapView>
+            </View>
+          )}
+
           <View style={styles.section}>
             <Text style={styles.label}>Status</Text>
             <View style={styles.statusButtons}>
@@ -78,6 +99,18 @@ const TaskDetail: React.FC<TaskDetailProps> = ({
               ))}
             </View>
           </View>
+
+          {task.files && task.files.length > 0 && (
+            <View style={styles.filesContainer}>
+              {task.files.map((file, index) => (
+                <TouchableOpacity
+                key={index}
+                onPress={() => Linking.openURL(file)}>
+                  <Text style={styles.fileLink} >{file.split('/').pop()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <View style={styles.timeSection}>
             <View style={styles.timeItem}>

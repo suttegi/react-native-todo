@@ -1,6 +1,16 @@
 {
   "expo": {
     "name": "sale-auto",
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./local/path/to/your/app-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./local/path/to/your/notification-sound.wav"]
+        }
+      ]
+    ],
     "slug": "sale-auto",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,13 +23,23 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.saleauto",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to location to add it to your tasks.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to location to add it to your tasks."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.anonymous.saleauto"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -173,4 +173,23 @@ export const getTaskDetailStyles = (isDarkMode: boolean) =>
       fontSize: 16,
       fontWeight: '600',
     },
+    filesContainer: {
+      marginTop: 10,
+    },
+    fileLink: {
+      color: '#007BFF',
+      textDecorationLine: 'underline',
+      marginBottom: 5
+    },
+    map: {
+      width: '100%',
+      height: 250,
+      borderRadius: 10,
+      marginVertical: 10,
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 5,
+    },
   });
